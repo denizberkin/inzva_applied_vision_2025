@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def visualize_sampling_steps_comparison(output_path=None):
     """
     Visualize how fewer steps are needed for rectified flow compared to diffusion.
@@ -23,14 +24,6 @@ def visualize_sampling_steps_comparison(output_path=None):
     ax.plot(steps, diffusion_fid, 'ro-', linewidth=2, markersize=10, label='Standard Diffusion')
     ax.plot(steps, rectified_flow_fid, 'bo-', linewidth=2, markersize=10, label='Rectified Flow')
     
-    # Add annotations for key points
-    ax.annotate('Similar quality', xy=(100, 19), xytext=(80, 25),
-                arrowprops=dict(facecolor='black', shrink=0.05, width=1.5, headwidth=8))
-    
-    ax.annotate('Rectified Flow with 10 steps ≈\nDiffusion with 25 steps', 
-                xy=(10, 30), xytext=(15, 45),
-                arrowprops=dict(facecolor='black', shrink=0.05, width=1.5, headwidth=8))
-    
     # Customize plot
     ax.set_xlabel('Number of Sampling Steps')
     ax.set_ylabel('FID Score (Lower is Better)')
@@ -47,6 +40,7 @@ def visualize_sampling_steps_comparison(output_path=None):
     
     plt.show()
 
+
 def visualize_path_length_comparison(output_path=None):
     """
     Visualize the concept of path length and its relation to sampling efficiency.
@@ -57,29 +51,22 @@ def visualize_path_length_comparison(output_path=None):
     # Create figure
     fig, ax = plt.subplots(figsize=(12, 8))
     
-    # Time steps
     t = np.linspace(0, 1, 1000)
     
-    # Setup for standard diffusion trajectory
     beta_start, beta_end = 0.0001, 0.02
     beta_t = beta_start + t * (beta_end - beta_start)
     alpha_t = 1 - beta_t
     alpha_bar_t = alpha_t  # Simplified
     
-    # In 2D space, create a path from data to noise
-    # Starting point (data) and ending point (noise)
     data_point = np.array([0.0, 0.0])
     noise_point = np.array([1.0, 1.0])
     
-    # Calculate trajectories
     rf_trajectory = np.array([(1 - tt) * data_point + tt * noise_point for tt in t])
     
-    # For diffusion, the trajectory curves based on the variance schedule
     diff_trajectory = np.array([np.sqrt(alpha_bar_tt) * data_point + 
                                np.sqrt(1 - alpha_bar_tt) * noise_point 
                                for alpha_bar_tt in alpha_bar_t])
     
-    # Calculate path lengths
     def path_length(trajectory):
         """Calculate the length of a path by summing segment lengths"""
         segments = np.diff(trajectory, axis=0)
@@ -109,15 +96,6 @@ def visualize_path_length_comparison(output_path=None):
     ax.scatter(diff_trajectory[diff_sample_indices, 0], diff_trajectory[diff_sample_indices, 1], 
                color='red', s=100, zorder=10, label=f'Diffusion Samples ({diff_samples} steps)')
     
-    # Add annotations
-    ax.annotate('Shorter path →\nFewer steps needed', 
-                xy=(0.4, 0.4), xytext=(0.2, 0.7),
-                arrowprops=dict(facecolor='blue', shrink=0.05, width=1.5, headwidth=8))
-    
-    ax.annotate('Longer, curved path →\nMore steps needed', 
-                xy=(0.7, 0.5), xytext=(0.7, 0.2),
-                arrowprops=dict(facecolor='red', shrink=0.05, width=1.5, headwidth=8))
-    
     # Mark data and noise points
     ax.scatter([data_point[0]], [data_point[1]], c='green', s=200, zorder=11, label='Data')
     ax.scatter([noise_point[0]], [noise_point[1]], c='orange', s=200, zorder=11, label='Noise')
@@ -142,6 +120,7 @@ def visualize_path_length_comparison(output_path=None):
         print(f"Visualization saved to {output_path}")
     
     plt.show()
+
 
 if __name__ == "__main__":
     # Example usage
