@@ -10,12 +10,10 @@ def add_noise_diffusion(x, t, beta_start=0.0001, beta_end=0.02, noise=None):
     if noise is None:
         noise = np.random.randn(*x.shape)
     
-    # Linear beta schedule
     beta_t = beta_start + t * (beta_end - beta_start)
     
-    # Calculate alpha_t values (variance preserving)
     alpha_t = 1 - beta_t
-    alpha_bar_t = alpha_t  # alpha_bar should be cumulative
+    alpha_bar_t = alpha_t
     
     # add noise
     sqrt_alpha_bar_t = np.sqrt(alpha_bar_t)

@@ -3,28 +3,17 @@ import matplotlib.pyplot as plt
 
 
 def visualize_sampling_steps_comparison(output_path=None):
-    """
-    Visualize how fewer steps are needed for rectified flow compared to diffusion.
-    
-    Args:
-        output_path: Optional path to save the visualization
-    """
-    # Number of steps used for each method
+    # num steps
     steps = np.array([5, 10, 25, 50, 100])
     
-    # Hypothetical FID scores (lower is better)
-    # These values are illustrative and would come from actual experiments
+    # illustrative FID scores
     diffusion_fid = np.array([90, 65, 38, 22, 19])
     rectified_flow_fid = np.array([45, 30, 22, 20, 19])
     
-    # Create figure
     fig, ax = plt.subplots(figsize=(10, 6))
-    
-    # Plot FID vs number of steps
     ax.plot(steps, diffusion_fid, 'ro-', linewidth=2, markersize=10, label='Standard Diffusion')
     ax.plot(steps, rectified_flow_fid, 'bo-', linewidth=2, markersize=10, label='Rectified Flow')
     
-    # Customize plot
     ax.set_xlabel('Number of Sampling Steps')
     ax.set_ylabel('FID Score (Lower is Better)')
     ax.set_title('Sampling Efficiency: Rectified Flow vs Standard Diffusion')
@@ -42,21 +31,13 @@ def visualize_sampling_steps_comparison(output_path=None):
 
 
 def visualize_path_length_comparison(output_path=None):
-    """
-    Visualize the concept of path length and its relation to sampling efficiency.
-    
-    Args:
-        output_path: Optional path to save the visualization
-    """
-    # Create figure
     fig, ax = plt.subplots(figsize=(12, 8))
     
     t = np.linspace(0, 1, 1000)
-    
     beta_start, beta_end = 0.0001, 0.02
     beta_t = beta_start + t * (beta_end - beta_start)
     alpha_t = 1 - beta_t
-    alpha_bar_t = alpha_t  # Simplified
+    alpha_bar_t = alpha_t
     
     data_point = np.array([0.0, 0.0])
     noise_point = np.array([1.0, 1.0])
@@ -68,7 +49,7 @@ def visualize_path_length_comparison(output_path=None):
                                for alpha_bar_tt in alpha_bar_t])
     
     def path_length(trajectory):
-        """Calculate the length of a path by summing segment lengths"""
+        """ sum segment lengths"""
         segments = np.diff(trajectory, axis=0)
         segment_lengths = np.sqrt(np.sum(segments**2, axis=1))
         return np.sum(segment_lengths)
@@ -76,14 +57,12 @@ def visualize_path_length_comparison(output_path=None):
     rf_length = path_length(rf_trajectory)
     diff_length = path_length(diff_trajectory)
     
-    # Plot trajectories
     ax.plot(rf_trajectory[:, 0], rf_trajectory[:, 1], 'b-', linewidth=3, 
             label=f'Rectified Flow (Length: {rf_length:.3f})')
     ax.plot(diff_trajectory[:, 0], diff_trajectory[:, 1], 'r-', linewidth=3, 
             label=f'Standard Diffusion (Length: {diff_length:.3f})')
     
-    # Create points for sampling along the path
-    # Fewer points for rectified flow
+    # fewer points for rectified flow is enough
     rf_samples = 5
     diff_samples = 15
     
