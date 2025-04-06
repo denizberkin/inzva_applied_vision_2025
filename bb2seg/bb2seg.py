@@ -1,13 +1,31 @@
+""" 
+If you have problems installing fast_slic [there are some issues with dependencies on windows-based systems],
+you should comment & un-comment the lines in the code below.
+
+
+# https://pyradiomics.readthedocs.io/en/latest/features.html
+# try to extract features from pseudo-generated mask and original image
+
+
+# slic algorithm short-papers & fast_slic implementation:
+fast_slic repository: https://github.com/Algy/fast-slic: reasonable explanation of the algorithm, easy to follow.
+original research [locked behind institution access (can check from #achante2012.pdf)]: https://ieeexplore.ieee.org/document/6205760
+maskSLIC Local Pathology Characterisation in Medical Images: https://arxiv.org/pdf/1606.09518
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 from skimage.segmentation import mark_boundaries, slic
 from pathlib import Path
-from fast_slic.avx2 import SlicAvx2
+
+try:
+    from fast_slic.avx2 import SlicAvx2
+    FAST_SLIC_AVAILABLE = True
+except ImportError:
+    FAST_SLIC_AVAILABLE = False
 
 
-# https://pyradiomics.readthedocs.io/en/latest/features.html
-# try to extract features from pseudo-generated mask and original image
 def slicMeanIntensityImage(image, slicMask):
     if len(image.shape) == 3:
         image = image[..., 0]
@@ -42,7 +60,7 @@ def process_single_image(image_path, n_segments=200, compactness=10, sigma=2.0,
                          resize_factor=1.0, quantile_dist=0.5, apply_filter=True):
     original_image = cv2.imread(str(image_path))
     if original_image is None:
-        raise ValueError(f"Could not read image: {image_path}")
+        raise ValueError(f"Could not read image: {image_path}, might want to check path or opencv!")
     
     original_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2RGB)
     
@@ -60,33 +78,35 @@ def process_single_image(image_path, n_segments=200, compactness=10, sigma=2.0,
     full_mask = np.ones(filtered_image.shape[:2], dtype=np.uint8)
     
     # Apply SLIC, either using fast_slic or skimage
-    # slic_segments = slic(filtered_image, n_segments=n_segments, compactness=compactness, 
-    #                      mask=full_mask, max_num_iter=10)
+    # check if fast_slic library is i
+    if FAST_SLIC_AVAILABLE:
+        min_size_factor=0.25
+        convert_to_lab=True 
+        slic = SlicAvx2(
+            num_components=n_segments,
+            compactness=compactness,
+            min_size_factor=min_size_factor,
+            convert_to_lab=convert_to_lab
+        )
+        slic_segments = slic.iterate(filtered_image)
+    else:
+        slic_segments = slic(filtered_image, n_segments=n_segments, compactness=compactness, 
+                             mask=full_mask, max_num_iter=10)
     
-    min_size_factor=0.25
-    convert_to_lab=True 
-    slic = SlicAvx2(
-        num_components=n_segments,
-        compactness=compactness,
-        min_size_factor=min_size_factor,
-        convert_to_lab=convert_to_lab
-    )
-    
-    slic_segments = slic.iterate(filtered_image)
-    
-    # Process with the requested functions
+    # main post-processing pipeline after superpixel calculation 
     mean_intensity_image = slicMeanIntensityImage(filtered_image, slic_segments)
     labels = getSlicTrainLabels(mean_intensity_image, slic_segments, quantileDist=quantile_dist)
     marked_image = markSegments(slic_segments, labels)
     
     return original_image, resized_image, slic_segments, mean_intensity_image, marked_image
 
+
 def visualize_and_save_results(results, output_path):
     original_image, resized_image, slic_segments, mean_intensity_image, marked_image = results
     
     plt.figure(figsize=(16, 12))
     
-    # Original image
+    # original image
     plt.subplot(2, 2, 1)
     plt.imshow(original_image)
     plt.title('Original Image')
@@ -100,13 +120,13 @@ def visualize_and_save_results(results, output_path):
     plt.title('SLIC Boundaries')
     plt.axis('off')
     
-    # Mean intensity image
+    # mean intensity image
     plt.subplot(2, 2, 3)
     plt.imshow(mean_intensity_image, cmap='gray')
     plt.title('Mean Intensity Image')
     plt.axis('off')
     
-    # Marked mask
+    # marked mask
     plt.subplot(2, 2, 4)
     plt.imshow(marked_image, cmap='gray')
     plt.title('Marked Mask')
@@ -128,7 +148,6 @@ def process_image_folder(input_folder, output_folder, n_segments=200, compactnes
     png_files = list(input_path.glob('*.png'))
     
     processed_count = 0
-    
     for png_file in png_files:
         try:
             filename = png_file.stem
@@ -143,12 +162,8 @@ def process_image_folder(input_folder, output_folder, n_segments=200, compactnes
                 apply_filter=apply_filter
             )
             
-            # Create the output file path
             output_file = output_path / f"{filename}_slic_results.png"
-            
-            # Visualize and save results
             visualize_and_save_results(results, output_file)
-            
             print(f"Processed: {png_file} -> {output_file}")
             processed_count += 1
             
