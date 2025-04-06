@@ -26,6 +26,48 @@ except ImportError:
     FAST_SLIC_AVAILABLE = False
 
 
+## TESTING
+def find_optimal_quantile(
+    image: np.ndarray, 
+    slicMask: np.ndarray, 
+    num_steps: int = 10) -> float:
+    """
+    Find the optimal quantile value for the image based on intensity distribution.
+    Hope this works out for me at one point.
+    """
+    if len(image.shape) == 3:
+        image = image[..., 0]
+    
+    # mean intensity image
+    meanImage = slicMeanIntensityImage(image, slicMask)
+    
+    # init
+    best_quantile = 0.5
+    max_variance = 0
+    
+    # try quantiles
+    for q in np.linspace(0.3, 0.7, num_steps):
+        # Get superpixel labels based on this quantile
+        labels = getSlicTrainLabels(meanImage, slicMask, quantileDist=q)
+        
+        binary_mask = np.zeros_like(slicMask, dtype=np.uint8)
+        for sliclabel in np.unique(slicMask):
+            if labels[sliclabel]:
+                binary_mask[slicMask == sliclabel] = 1
+        
+        # variance between foreground and background
+        if np.sum(binary_mask) > 0 and np.sum(binary_mask) < binary_mask.size:
+            fg_mean = np.mean(image[binary_mask == 1])
+            bg_mean = np.mean(image[binary_mask == 0])
+            variance = (fg_mean - bg_mean) ** 2
+            
+            if variance > max_variance:
+                max_variance = variance
+                best_quantile = q
+    
+    return best_quantile
+
+
 def slicMeanIntensityImage(image, slicMask):
     if len(image.shape) == 3:
         image = image[..., 0]
@@ -77,7 +119,7 @@ def process_single_image(image_path, n_segments=200, compactness=10, sigma=2.0,
     
     full_mask = np.ones(filtered_image.shape[:2], dtype=np.uint8)
     
-    # Apply SLIC, either using fast_slic or skimage
+    # apply SLIC, either using fast_slic or skimage
     # check if fast_slic library is i
     if FAST_SLIC_AVAILABLE:
         min_size_factor=0.25
@@ -159,7 +201,7 @@ def process_image_folder(input_folder, output_folder, n_segments=200, compactnes
                 sigma=sigma,
                 resize_factor=resize_factor,
                 quantile_dist=quantile_dist,
-                apply_filter=apply_filter
+                apply_filter=apply_filter,
             )
             
             output_file = output_path / f"{filename}_slic_results.png"
@@ -174,6 +216,8 @@ def process_image_folder(input_folder, output_folder, n_segments=200, compactnes
 
 
 if __name__ == "__main__":
+    # retina images operate on inverse of what mean_intensity is intended, 
+    # so I'll need to parametrize and add a mechanism to calculate based on that as well
     input_folder = "images"
     output_folder = "outputs"
     
@@ -184,8 +228,9 @@ if __name__ == "__main__":
         compactness=1,
         sigma=2.0,
         resize_factor=1.0,
-        quantile_dist=0.5,
-        apply_filter=True
+        apply_filter=True,
+        quantile_dist=0.99,  # value to be tuned while creating absolute mask (bottom right in the plot)
+        # higher quantile dist is used for brigher or intenser image modalities
     )
     
     print(f"Processing complete. {num_processed} images processed successfully.")
