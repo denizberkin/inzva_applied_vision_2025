@@ -1,1 +1,1 @@
-## 
+## Thanks [Enes Sadi Uysal](https://www.github.com/eneSadi) for the [vit notebook](/vit/VIT_notebook.ipynb)
